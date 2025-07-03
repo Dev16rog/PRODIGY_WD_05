@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather App</title>
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #6dd5ed, #2193b0);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .weather-card {
+      background-color: #ffffffcc;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.2);
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      color: #222;
+    }
+    select {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+    }
+    .weather-info {
+      margin: 1rem 0;
+      color: #444;
+    }
+    .forecast-title {
+      margin-top: 1.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+    .forecast-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .forecast-day {
+      background: #f0f8ff;
+      border-radius: 10px;
+      padding: 0.75rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #clock {
+      margin-bottom: 1rem;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="weather-card">
+    <div id="clock">Loading time...</div>
+    <h1>Live Weather</h1>
+    <select id="citySelect" onchange="getWeather(this.value)">
+      <option value="Pune">Pune</option>
+      <option value="Nagpur">Nagpur</option>
+      <option value="Bangalore">Bangalore</option>
+      <option value="Delhi">Delhi</option>
+      <option value="Mumbai">Mumbai</option>
+    </select>
+    <div class="weather-info" id="weatherResult"></div>
+    <div class="forecast-title">3-Day Forecast</div>
+    <div class="forecast-container" id="forecast"></div>
+  </div>
+
+  <script>
+    const apiKey = "66800c594caad8e19487cc1ffa2ff3fd";
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    async function getWeather(city) {
+      const weatherResult = document.getElementById("weatherResult");
+      const forecastContainer = document.getElementById("forecast");
+
+      weatherResult.innerHTML = "Loading weather data...";
+      forecastContainer.innerHTML = "";
+
+      try {
+        const weatherURL = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+        const forecastURL = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+        const [weatherRes, forecastRes] = await Promise.all([
+          fetch(weatherURL),
+          fetch(forecastURL),
+        ]);
+
+        if (!weatherRes.ok || !forecastRes.ok) throw new Error("API error");
+
+        const weatherData = await weatherRes.json();
+        const forecastData = await forecastRes.json();
+
+        // 💧 Current Weather Details
+        const temp = weatherData.main.temp;
+        const feels = weatherData.main.feels_like;
+        const humidity = weatherData.main.humidity;
+        const wind = weatherData.wind.speed;
+        const condition = weatherData.weather[0].description;
+        const name = weatherData.name;
+
+        weatherResult.innerHTML = `
+          <h2>${name}</h2>
+          <p><strong>Temperature:</strong> ${temp} °C</p>
+          <p><strong>Feels Like:</strong> ${feels} °C</p>
+          <p><strong>Humidity:</strong> ${humidity}%</p>
+          <p><strong>Wind Speed:</strong> ${wind} m/s</p>
+          <p><strong>Condition:</strong> ${condition}</p>
+        `;
+
+        // 🔮 Forecast - show next 3 days at 12:00:00
+        const forecastList = forecastData.list.filter(item =>
+          item.dt_txt.includes("12:00:00")
+        ).slice(0, 3);
+
+        forecastList.forEach(forecast => {
+          const date = new Date(forecast.dt_txt).toDateString();
+          const fTemp = forecast.main.temp;
+          const fHumidity = forecast.main.humidity;
+          const fWind = forecast.wind.speed;
+          const fCondition = forecast.weather[0].description;
+
+          forecastContainer.innerHTML += `
+            <div class="forecast-day">
+              <p><strong>${date}</strong></p>
+              <p>Temp: ${fTemp} °C</p>
+              <p>Humidity: ${fHumidity}%</p>
+              <p>Wind: ${fWind} m/s</p>
+              <p>${fCondition}</p>
+            </div>
+          `;
+        });
+
+      } catch (error) {
+        weatherResult.innerHTML = `<p style="color:red;">Oops! Couldn’t fetch weather info 🌧️</p>`;
+        console.error("Fetch error:", error);
+      }
+    }
+
+    // Load default city on startup
+    window.onload = () => getWeather("Pune");
+  </script>
+</body>
+</html>
